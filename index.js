@@ -1,1 +1,176 @@
+import {
+Client,
+GatewayIntentBits,
+ActionRowBuilder,
+StringSelectMenuBuilder,
+ModalBuilder,
+TextInputBuilder,
+TextInputStyle,
+InteractionType,
+EmbedBuilder,
+ChannelType
+} from "discord.js";
 
+import dotenv from "dotenv";
+dotenv.config();
+
+const client = new Client({
+ intents: [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.MessageContent
+ ]
+});
+
+const CATEGORY_ID = "1483243482209583116";
+
+client.once("ready", () => {
+ console.log(`Bot online als ${client.user.tag}`);
+});
+
+client.on("messageCreate", async message => {
+
+ if (message.content === "!s839") {
+
+  const embed = new EmbedBuilder()
+  .setColor("#00b0f4")
+  .setTitle("Vantix Clip System")
+  .setDescription(`Submit your clips here for the team.
+
+Select the clip type from the menu below.
+
+Our team uses these clips for content, montages and highlights.`);
+
+  const menu = new StringSelectMenuBuilder()
+  .setCustomId("clip_type")
+  .setPlaceholder("Choose your clip type")
+  .addOptions([
+   { label: "Kill", value: "Kill" },
+   { label: "Base gevonden / Find", value: "Base Find" },
+   { label: "Base Raid", value: "Base Raid" },
+   { label: "Overig / Other", value: "Other" }
+  ]);
+
+  const row = new ActionRowBuilder().addComponents(menu);
+
+  message.channel.send({
+   embeds: [embed],
+   components: [row]
+  });
+
+ }
+
+});
+
+client.on("interactionCreate", async interaction => {
+
+ /* dropdown */
+ if (interaction.isStringSelectMenu()) {
+
+  if (interaction.customId === "clip_type") {
+
+   const type = interaction.values[0];
+
+   const modal = new ModalBuilder()
+   .setCustomId(`clip_modal_${type}`)
+   .setTitle("Submit Clip");
+
+   const mcName = new TextInputBuilder()
+   .setCustomId("mcname")
+   .setLabel("Minecraft Username")
+   .setStyle(TextInputStyle.Short)
+   .setRequired(true);
+
+   const clipLink = new TextInputBuilder()
+   .setCustomId("cliplink")
+   .setLabel("Clip link")
+   .setStyle(TextInputStyle.Short)
+   .setRequired(true);
+
+   modal.addComponents(
+    new ActionRowBuilder().addComponents(mcName),
+    new ActionRowBuilder().addComponents(clipLink)
+   );
+
+   await interaction.showModal(modal);
+
+  }
+
+ }
+
+ /* modal submit */
+ if (interaction.type === InteractionType.ModalSubmit) {
+
+  if (interaction.customId.startsWith("clip_modal_")) {
+
+   const type = interaction.customId.replace("clip_modal_", "");
+
+   const mc = interaction.fields.getTextInputValue("mcname");
+   const clip = interaction.fields.getTextInputValue("cliplink");
+
+   let channel = interaction.guild.channels.cache.find(
+    c => c.name === `clips-${mc.toLowerCase()}`
+   );
+
+   let firstTime = false;
+
+   if (!channel) {
+
+    firstTime = true;
+
+    channel = await interaction.guild.channels.create({
+     name: `clips-${mc.toLowerCase()}`,
+     type: ChannelType.GuildText,
+     parent: CATEGORY_ID
+    });
+
+   }
+
+   const head = `https://crafatar.com/avatars/${mc}?size=128&overlay`;
+
+   if (firstTime) {
+
+    const infoEmbed = new EmbedBuilder()
+    .setColor("#00b0f4")
+    .setTitle(`${mc}'s Clip Channel`)
+    .setThumbnail(head)
+    .addFields(
+     { name: "Minecraft Username", value: mc, inline: true },
+     { name: "Discord User", value: `${interaction.user}`, inline: true }
+    )
+    .setDescription("All clips submitted by this player will appear in this channel.");
+
+    await channel.send({ embeds: [infoEmbed] });
+
+   }
+
+   const clipEmbed = new EmbedBuilder()
+   .setColor("#00b0f4")
+   .setTitle("New Clip Submitted")
+   .setThumbnail(head)
+   .addFields(
+    { name: "Player", value: mc, inline: true },
+    { name: "Clip Type", value: type, inline: true },
+    { name: "Submitted by", value: `${interaction.user}`, inline: true },
+    { name: "Clip", value: clip }
+   );
+
+   const msg = await channel.send({ embeds: [clipEmbed] });
+
+   await msg.startThread({
+    name: `Clip Discussion`,
+    autoArchiveDuration: 1440
+   });
+
+   await interaction.reply({
+    content: "✅ Clip submitted!",
+    ephemeral: true
+   });
+
+  }
+
+ }
+
+});
+
+client.login(process.env.TOKEN);

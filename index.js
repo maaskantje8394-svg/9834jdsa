@@ -11,24 +11,25 @@ TextInputBuilder,
 TextInputStyle,
 InteractionType,
 EmbedBuilder,
-ChannelType
+ChannelType,
+PermissionsBitField
 } from "discord.js";
 
 dotenv.config();
 
-/* uptime server voor uptimerobot */
+/* ================= UPTIME SERVER ================= */
 
 const app = express();
 
-app.get("/", (req,res) => {
- res.send("Bot alive");
+app.get("/", (req, res) => {
+ res.send("Bot is alive");
 });
 
 app.listen(process.env.PORT || 3000, () => {
  console.log("Uptime server running");
 });
 
-/* discord bot */
+/* ================= DISCORD BOT ================= */
 
 const client = new Client({
  intents: [
@@ -40,11 +41,13 @@ const client = new Client({
 
 const CATEGORY_ID = "1483243482209583116";
 
+/* ================= READY ================= */
+
 client.once("ready", () => {
  console.log(`Logged in as ${client.user.tag}`);
 });
 
-/* command om menu te sturen */
+/* ================= COMMAND ================= */
 
 client.on("messageCreate", async message => {
 
@@ -80,9 +83,11 @@ Our team uses these clips for content, montages and highlights.`);
 
 });
 
-/* dropdown + modal */
+/* ================= INTERACTIONS ================= */
 
 client.on("interactionCreate", async interaction => {
+
+ /* ===== DROPDOWN ===== */
 
  if (interaction.isStringSelectMenu()) {
 
@@ -117,7 +122,7 @@ client.on("interactionCreate", async interaction => {
 
  }
 
-/* modal submit */
+ /* ===== MODAL SUBMIT ===== */
 
  if (interaction.type === InteractionType.ModalSubmit) {
 
@@ -141,12 +146,35 @@ client.on("interactionCreate", async interaction => {
     channel = await interaction.guild.channels.create({
      name: `clips-${mc.toLowerCase()}`,
      type: ChannelType.GuildText,
-     parent: CATEGORY_ID
+     parent: CATEGORY_ID,
+     permissionOverwrites: [
+      {
+       id: interaction.guild.id,
+       deny: [PermissionsBitField.Flags.ViewChannel]
+      },
+      {
+       id: interaction.user.id,
+       allow: [
+        PermissionsBitField.Flags.ViewChannel,
+        PermissionsBitField.Flags.SendMessages,
+        PermissionsBitField.Flags.ReadMessageHistory
+       ]
+      },
+      {
+       id: interaction.client.user.id,
+       allow: [
+        PermissionsBitField.Flags.ViewChannel,
+        PermissionsBitField.Flags.SendMessages
+       ]
+      }
+     ]
     });
 
    }
 
    const head = `https://crafatar.com/avatars/${mc}?size=128&overlay`;
+
+   /* eerste keer info */
 
    if (first) {
 
@@ -164,6 +192,8 @@ client.on("interactionCreate", async interaction => {
 
    }
 
+   /* clip embed */
+
    const clipEmbed = new EmbedBuilder()
    .setColor("#00b0f4")
    .setTitle("New Clip Submitted")
@@ -176,6 +206,8 @@ client.on("interactionCreate", async interaction => {
    );
 
    const msg = await channel.send({ embeds: [clipEmbed] });
+
+   /* thread per clip */
 
    await msg.startThread({
     name: `Clip Discussion`,

